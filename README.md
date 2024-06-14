@@ -1,5 +1,5 @@
 # Epic sql &mdash; Conveniences for working with SQL
-[![Epic-sql CI](https://github.com/Cybereason/epic-sql/actions/workflows/ci.yml/badge.svg)](https://github.com/Cybereason/epic-sql/actions/workflows/ci.yml)
+[![Epic-sql CI](https://github.com/epic-framework/epic-sql/actions/workflows/ci.yml/badge.svg)](https://github.com/epic-framework/epic-sql/actions/workflows/ci.yml)
 
 ## What is it?
 
