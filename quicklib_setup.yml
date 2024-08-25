@@ -6,7 +6,7 @@ setup:
     content_type: text/markdown
   author: Yonatan Perry, Assaf Ben-David
   license: MIT License
-  url: https://github.com/Cybereason/epic-sql
+  url: https://github.com/epic-framework/epic-sql
   python_requires: ">=3.10"
   top_packages:
     - epic
