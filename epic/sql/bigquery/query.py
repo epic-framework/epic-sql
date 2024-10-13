@@ -114,11 +114,11 @@ def table_schema(full_table_name: str, client: bq.Client | None = None, **kwargs
         full_table_name = full_table_name[1:-1]
     project_dataset, table_name = full_table_name.rsplit('.', 1)
     schema = query_into_df(f"""
-        select column_name, data_type, is_nullable = 'YES' is_nullable, 
+        SELECT column_name, data_type, is_nullable = 'YES' is_nullable, 
             is_partitioning_column = 'YES' is_partitioning_column, ordinal_position
-        from `{project_dataset}.INFORMATION_SCHEMA.COLUMNS`
-        where table_name = '{table_name}'
-        order by ordinal_position
+        FROM `{project_dataset}.INFORMATION_SCHEMA.COLUMNS`
+        WHERE table_name = '{table_name}'
+        ORDER BY ordinal_position
     """, client=client, verbose=False, **kwargs).set_index('ordinal_position')
     if schema.index.hasnans:
         schema.index = schema.index.astype(pd.Int32Dtype())

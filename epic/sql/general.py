@@ -11,7 +11,7 @@ from epic.common.general import to_iterable
 SQL = NewType('SQL', str)
 
 # Useful shorthand
-cnt = SQL("count(1) as cnt")
+cnt = SQL("COUNT(1) AS cnt")
 
 
 class _StrAsInstance(type):
@@ -45,7 +45,7 @@ class gb1ob2d(metaclass=_StrAsInstance):
 
     def __str__(self) -> SQL:
         gb = ", ".join(map(str, range(1, self.n + 1)))
-        return SQL(f'group by {gb} order by {self.n + 1} desc limit {self.limit}')
+        return SQL(f'GROUP BY {gb} ORDER BY {self.n + 1} DESC LIMIT {self.limit}')
 
 
 @singledispatch
@@ -57,10 +57,10 @@ def sql_repr(obj) -> SQL:
 
 
 sql_repr.register(str, lambda s: SQL(f"'{s}'"))
-sql_repr.register(date, lambda d: SQL(f"date '{d}'"))
-sql_repr.register(datetime, lambda dt: SQL(f"{'datetime' if dt.tzinfo is None else 'timestamp'} '{dt}'"))
+sql_repr.register(date, lambda d: SQL(f"DATE '{d}'"))
+sql_repr.register(datetime, lambda dt: SQL(f"{'DATETIME' if dt.tzinfo is None else 'TIMESTAMP'} '{dt}'"))
 sql_repr.register(Iterable, lambda it: SQL(f"[{', '.join(map(sql_repr, it))}]"))
-sql_repr.register(Mapping, lambda m: SQL(f"struct({', '.join(f'{sql_repr(v)} as {k}' for k, v in m.items())})"))
+sql_repr.register(Mapping, lambda m: SQL(f"STRUCT({', '.join(f'{sql_repr(v)} AS {k}' for k, v in m.items())})"))
 sql_repr.register(type(pd.NaT), sql_repr.__wrapped__)  # pd.NaT is an instance of date and datetime, so override
 
 
@@ -68,8 +68,8 @@ sql_repr.register(type(pd.NaT), sql_repr.__wrapped__)  # pd.NaT is an instance o
 def _(df: pd.DataFrame) -> SQL:
     # Note: The index is not kept
     rows = iter(map(sql_repr, row) for row in df.values)
-    rows = chain([(f"{value} as {name}" for name, value in zip(df.columns, next(rows)))], rows)
-    return SQL(" union all ".join("select " + ', '.join(row) for row in rows))
+    rows = chain([(f"{value} AS {name}" for name, value in zip(df.columns, next(rows)))], rows)
+    return SQL(" UNION ALL ".join("SELECT " + ', '.join(row) for row in rows))
 
 
 def sql_in(values, sort: bool = True) -> SQL:
@@ -119,11 +119,11 @@ def sql_format(template: str, values: Mapping[str, Iterable] | Iterable[Iterable
 
     Examples
     --------
-    >>> sql_format('sum({col}) + {i} as {col}_value', {'col': ['A', 'B'], 'i': [50, 100]})
-    'sum(A) + 50 as A_value, sum(B) + 100 as B_value'
+    >>> sql_format('SUM({col}) + {i} AS {col}_value', {'col': ['A', 'B'], 'i': [50, 100]})
+    'SUM(A) + 50 AS A_value, SUM(B) + 100 AS B_value'
 
-    >>> sql_format('{} = {}', [('a', 'b'), (1, 2)], ' and ')
-    'a = 1 and b = 2'
+    >>> sql_format('{} = {}', [('a', 'b'), (1, 2)], ' AND ')
+    'a = 1 AND b = 2'
     """
     if isinstance(values, Mapping):
         args_iter = repeat(())
@@ -155,7 +155,7 @@ def sql_if(conditions: Mapping | Iterable[tuple[Any, Any]]) -> SQL:
         conditions = conditions.items()
     expression = close_paren = ""
     for value, cond in conditions:
-        expression += f"if(({cond}), {sql_repr(value)}, "
+        expression += f"IF(({cond}), {sql_repr(value)}, "
         close_paren += ')'
     return SQL(expression + 'NULL' + close_paren)
 
@@ -185,14 +185,14 @@ def select_by_extremum(source_expr: str, group_by: str, value: str, extremum: Li
     string
     """
     if " " not in source_expr:
-        source_expr = f"select * from {source_expr}"
+        source_expr = f"SELECT * FROM {source_expr}"
     if extremum not in ('min', 'max'):
         raise ValueError(f"`extremum` must be one of 'min' or 'max'; got {extremum}")
-    order_dir = 'desc' if extremum == 'max' else 'asc'
+    order_dir = 'DESC' if extremum == 'max' else 'ASC'
     return SQL(f"""(
-        with ranked as (
-            select *, row_number() over(partition by {group_by} order by {value} {order_dir}) as rank_
-            from ({source_expr})
+        WITH ranked AS (
+            SELECT *, ROW_NUMBER() OVER(PARTITION BY {group_by} ORDER BY {value} {order_dir}) AS rank_
+            FROM ({source_expr})
         )
-        select * from ranked where rank_ = 1
+        SELECT * FROM ranked WHERE rank_ = 1
     )""")

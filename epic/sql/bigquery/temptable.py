@@ -78,8 +78,8 @@ def set_expiration_time(
     elif not isinstance(when, dt.datetime):
         raise TypeError(f"Unexpected type for `when`: {type(when).__name__}")
     client.query(f"""
-        alter table `{table_name}`
-        set options (
+        ALTER TABLE `{table_name}`
+        SET OPTIONS (
             expiration_timestamp={sql_repr(when)}
         )
     """).result()
