@@ -134,10 +134,9 @@ def sql_format(template: str, values: Mapping[str, Iterable] | Iterable[Iterable
     return SQL(joiner.join(template.format(*args, **kw) for args, kw in zip(args_iter, kw_iter)))
 
 
-def sql_if(conditions: Mapping | Iterable[tuple[Any, Any]]) -> SQL:
+def sql_if(conditions: Mapping | Iterable[tuple[Any, Any]], else_=None) -> SQL:
     """
     Generate an SQL expression which selects the value corresponding to the first matching condition.
-    If no condition matches, evaluates to NULL.
 
     Parameters
     ----------
@@ -147,17 +146,18 @@ def sql_if(conditions: Mapping | Iterable[tuple[Any, Any]]) -> SQL:
         - If a mapping, maps values to conditions.
         - If an iterable, yields pairs of (value, condition). Useful if the values are not hashable.
 
+    else_ : optional, default None
+        The value if no condition matches.
+
     Returns
     -------
     string
     """
     if isinstance(conditions, Mapping):
         conditions = conditions.items()
-    expression = close_paren = ""
-    for value, cond in conditions:
-        expression += f"IF(({cond}), {sql_repr(value)}, "
-        close_paren += ')'
-    return SQL(expression + 'NULL' + close_paren)
+    cases = [f"WHEN {cond} THEN {sql_repr(value)}" for value, cond in conditions]
+    else_ = sql_repr(else_)
+    return SQL("\n".join(["CASE", *cases, f"ELSE {else_}", "END"]) if cases else else_)
 
 
 def select_by_extremum(source_expr: str, group_by: str, value: str, extremum: Literal['min', 'max'] = 'max') -> SQL:

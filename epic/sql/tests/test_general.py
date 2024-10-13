@@ -42,6 +42,8 @@ def test_format():
 
 def test_if():
     cond = dict(value1="a = 3", value2="a = 4", value3="a IS NULL")
-    result = "IF((a = 3), 'value1', IF((a = 4), 'value2', IF((a IS NULL), 'value3', NULL)))"
+    result = "CASE\nWHEN a = 3 THEN 'value1'\nWHEN a = 4 THEN 'value2'\nWHEN a IS NULL THEN 'value3'\nELSE NULL\nEND"
     assert sql_if(cond) == result
     assert sql_if(cond.items()) == result
+    assert sql_if(cond, 'value4') == result.replace("ELSE NULL", "ELSE 'value4'")
+    assert sql_if([]) == "NULL"
