@@ -56,7 +56,9 @@ def sql_repr(obj) -> SQL:
     return SQL(str(obj) if pd.notna(obj) else "NULL")
 
 
-sql_repr.register(str, lambda s: SQL(f"'{s}'"))
+sql_repr.register(str, lambda s: SQL(repr(s)))
+sql_repr.register(bytes, lambda b: SQL(str(b)))
+sql_repr.register(bytearray, lambda ba: SQL(str(bytes(ba))))
 sql_repr.register(date, lambda d: SQL(f"DATE '{d}'"))
 sql_repr.register(datetime, lambda dt: SQL(f"{'DATETIME' if dt.tzinfo is None else 'TIMESTAMP'} '{dt}'"))
 sql_repr.register(Iterable, lambda it: SQL(f"[{', '.join(map(sql_repr, it))}]"))

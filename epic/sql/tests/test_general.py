@@ -21,6 +21,9 @@ def test_repr():
     assert sql_repr(123) == str(123)
     assert sql_repr(123.4) == str(123.4)
     assert sql_repr("hello") == "'hello'"
+    assert sql_repr("it's") == '"it\'s"'
+    assert sql_repr(b"it's") == 'b"it\'s"'
+    assert sql_repr(bytearray(b"it's")) == 'b"it\'s"'
     assert sql_repr(d := dt.date.today()) == f"DATE '{d}'"
     assert sql_repr(t := dt.datetime.now()) == f"DATETIME '{t}'"
     assert sql_repr(t := pd.Timestamp.now('UTC')) == f"TIMESTAMP '{t}'"
