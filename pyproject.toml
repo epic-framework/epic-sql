@@ -2,7 +2,7 @@
 name = "epic-sql"
 version = "1.1.0"
 description = "Conveniences for working with SQL"
-authors = ["Yonatan Perry, Assaf Ben-David"]
+authors = ["Yonatan Perry", "Assaf Ben-David"]
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/epic-framework/epic-sql"
