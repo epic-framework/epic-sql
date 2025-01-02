@@ -828,34 +828,6 @@ pytest = ">=4.6"
 testing = ["fields", "hunter", "process-tests", "pytest-xdist", "virtualenv"]
 
 [[package]]
-name = "pytest-repeat"
-version = "0.9.3"
-description = "pytest plugin for repeating tests"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "pytest_repeat-0.9.3-py3-none-any.whl", hash = "sha256:26ab2df18226af9d5ce441c858f273121e92ff55f5bb311d25755b8d7abdd8ed"},
-    {file = "pytest_repeat-0.9.3.tar.gz", hash = "sha256:ffd3836dfcd67bb270bec648b330e20be37d2966448c4148c4092d1e8aba8185"},
-]
-
-[package.dependencies]
-pytest = "*"
-
-[[package]]
-name = "pytest-timeout"
-version = "2.3.1"
-description = "pytest plugin to abort hanging tests"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "pytest-timeout-2.3.1.tar.gz", hash = "sha256:12397729125c6ecbdaca01035b9e5239d4db97352320af155b3f5de1ba5165d9"},
-    {file = "pytest_timeout-2.3.1-py3-none-any.whl", hash = "sha256:68188cb703edfc6a18fad98dc25a3c61e9f24d644b0b70f33af545219fc7813e"},
-]
-
-[package.dependencies]
-pytest = ">=7.0.0"
-
-[[package]]
 name = "python-dateutil"
 version = "2.9.0.post0"
 description = "Extensions to the standard Python datetime module"
@@ -1022,4 +994,4 @@ bigquery = ["epic-jupyter", "google-api-core", "google-cloud-bigquery", "tqdm"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "4902d4da8cd915a735fff5144025be5f85943da4e561837f788f6c78c09fd67f"
+content-hash = "e2ab9b0e78ead2f40ddf3c1151382e32ea62aca59b5a97c24e45d3cbca9d4db3"

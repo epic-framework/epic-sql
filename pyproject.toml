@@ -20,8 +20,6 @@ epic-jupyter = {version = "^1.0.5", optional = true}
 [tool.poetry.group.test.dependencies]
 pytest = "^8.3.4"
 pytest-cov = "^6.0.0"
-pytest-timeout = "^2.3.1"
-pytest-repeat = "^0.9.3"
 
 [tool.poetry.extras]
 bigquery = [
