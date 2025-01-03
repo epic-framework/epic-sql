@@ -994,4 +994,4 @@ bigquery = ["epic-jupyter", "google-api-core", "google-cloud-bigquery", "tqdm"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "e2ab9b0e78ead2f40ddf3c1151382e32ea62aca59b5a97c24e45d3cbca9d4db3"
+content-hash = "5b901c54ee5d9b1df6398feb153d474c3a0b2cad2aafc4a22285db70e1e26ec2"
