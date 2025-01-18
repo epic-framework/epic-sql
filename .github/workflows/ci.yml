@@ -2,9 +2,13 @@ name: Epic-sql CI
 
 on:
   push:
+    branches:
+      - "**"
     paths-ignore:
-      - "*.md"
+      - "**/*.md"
       - .gitignore
+    tags-ignore:
+      - "**"
   pull_request:
     types: [opened, reopened]
 

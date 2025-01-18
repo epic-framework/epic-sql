@@ -8,4 +8,5 @@ dist
 *.egg-info
 .pytest_cache
 .coverage*
+!.coveragerc
 htmlcov
