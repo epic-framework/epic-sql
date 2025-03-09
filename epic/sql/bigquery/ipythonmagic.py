@@ -12,9 +12,6 @@ from epic.jupyter.ipython import get_ipython
 from .query import query_into_df
 
 
-get_ipython(strict=True).extension_manager.load_extension("google.cloud.bigquery")
-
-
 class BigQueryMagic:
     """
     IPython magic for querying BigQuery.
