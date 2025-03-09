@@ -25,7 +25,7 @@ class BigQueryMagic:
         self.client = client
         self._name: str | None = None
 
-    def register(self, name: str) -> None:
+    def register(self, name: str, ipython=None) -> None:
         """
         Register the magic for use.
 
@@ -33,6 +33,8 @@ class BigQueryMagic:
         ----------
         name : str
             The name used to activate the magic.
+        ipython: InteractiveShell (optional)
+            An IPython instance to register with
 
         Returns
         -------
@@ -47,7 +49,9 @@ class BigQueryMagic:
                     f"{self} is already registered under name '{self._name}'; "
                     f"refusing to register it also under name '{name}'"
                 )
-        get_ipython(strict=True).register_magic_function(self.run_magic, 'line_cell', name)
+        if ipython is None:
+            ipython = get_ipython(strict=True)
+        ipython.register_magic_function(self.run_magic, 'line_cell', name)
         self._name = name
 
     @property
@@ -104,5 +108,5 @@ class BigQueryMagic:
         return result
 
 
-# Register at import-time
-BigQueryMagic().register("bq")
+def _load_ipython_extension(ipython):
+    BigQueryMagic().register("bq", ipython)
