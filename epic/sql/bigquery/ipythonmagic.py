@@ -33,7 +33,8 @@ class BigQueryMagic:
         ----------
         name : str
             The name used to activate the magic.
-        ipython: InteractiveShell (optional)
+
+        ipython : InteractiveShell (optional)
             An IPython instance to register with
 
         Returns

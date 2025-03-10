@@ -189,12 +189,10 @@ def select_by_extremum(source_expr: str, group_by: str, value: str, extremum: Li
     if " " not in source_expr:
         source_expr = f"SELECT * FROM {source_expr}"
     if extremum not in ('min', 'max'):
-        raise ValueError(f"`extremum` must be one of 'min' or 'max'; got {extremum}")
+        raise ValueError(f"`extremum` must be one of 'min' or 'max'; got {extremum!r}")
     order_dir = 'DESC' if extremum == 'max' else 'ASC'
     return SQL(f"""(
-        WITH ranked AS (
-            SELECT *, ROW_NUMBER() OVER(PARTITION BY {group_by} ORDER BY {value} {order_dir}) AS rank_
-            FROM ({source_expr})
-        )
-        SELECT * FROM ranked WHERE rank_ = 1
+        SELECT *
+        FROM ({source_expr})
+        QUALIFY ROW_NUMBER() OVER(PARTITION BY {group_by} ORDER BY {value} {order_dir}) = 1
     )""")
