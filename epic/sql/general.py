@@ -68,9 +68,14 @@ sql_repr.register(type(pd.NaT), sql_repr.__wrapped__)  # pd.NaT is an instance o
 
 @sql_repr.register
 def _(df: pd.DataFrame) -> SQL:
+    if df.empty:
+        raise ValueError("Cannot represent an empty DataFrame as a table")
     # Note: The index is not kept
-    rows = iter(map(sql_repr, row) for row in df.values)
-    rows = chain([(f"{value} AS {name}" for name, value in zip(df.columns, next(rows)))], rows)
+    rows = iter(map(sql_repr, row) for row in df.to_numpy(dtype=object))
+    rows = chain(
+        [(f"{value} AS {name}" for name, value in zip(df.columns, next(rows)))],
+        rows,
+    )
     return SQL(" UNION ALL ".join("SELECT " + ', '.join(row) for row in rows))
 
 
