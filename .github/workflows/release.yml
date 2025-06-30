@@ -1,0 +1,89 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      update_type:
+        description: "Version bump type"
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      pypi_target:
+        description: "PyPI target"
+        required: true
+        default: "PyPI Prod"
+        type: choice
+        options:
+          - "PyPI Prod"
+          - "Test PyPI"
+
+jobs:
+  kickoff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack (release started)
+        uses: epic-framework/.github/.github/actions/notify-slack@v1
+        with:
+          message_type: release-start
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL__RELEASE }}
+          version_bump: ${{ github.event.inputs.update_type }}
+          pypi_target: ${{ github.event.inputs.pypi_target }}
+
+  test:
+    needs: kickoff
+    uses: epic-framework/.github/.github/workflows/test.yml@v1
+
+  bump_and_build:
+    needs: test
+    environment: production
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump_and_build.outputs.new_version }}
+    steps:
+    - name: Run bump-and-build
+      id: bump_and_build
+      uses: epic-framework/.github/.github/actions/bump-and-build@v1
+      with:
+        update_type: ${{ github.event.inputs.update_type }}
+        access_token: ${{ secrets.GH_PAT }}
+
+  publish:
+    needs: bump_and_build
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: library-${{ needs.bump_and_build.outputs.version }}
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          repository-url: ${{ github.event.inputs.pypi_target == 'Test PyPI' && 'https://test.pypi.org/legacy/' || '' }}
+
+  notify_result:
+    needs: [test, bump_and_build, publish]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack (final outcome)
+        uses: epic-framework/.github/.github/actions/notify-slack@v1
+        with:
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL__RELEASE }}
+          version: ${{ needs.bump_and_build.result == 'success' && needs.bump_and_build.outputs.version || '' }}
+          pypi_target: ${{ github.event.inputs.pypi_target }}
+          message_type: >-
+            ${{ 
+              contains(needs.*.result, 'failure') && 'release-error' || 
+              contains(needs.*.result, 'cancelled') && 'release-cancelled' || 
+              'release-done'
+            }}
