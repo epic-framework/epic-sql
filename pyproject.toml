@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "epic-sql"
-version = "1.1.3"
+version = "1.1.4"
 description = "Conveniences for working with SQL"
 authors = ["Yonatan Perry", "Assaf Ben-David"]
 license = "MIT"
