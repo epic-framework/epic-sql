@@ -1,9 +1,11 @@
 import pandas as pd
+import pyarrow as pa
 
-from itertools import chain, repeat
+from decimal import Decimal
+from itertools import repeat
 from datetime import date, datetime
 from functools import singledispatch
-from typing import NewType, Literal, Any
+from typing import NewType, Literal, Any, cast
 from collections.abc import Iterable, Mapping
 
 from epic.common.general import to_iterable
@@ -48,35 +50,123 @@ class gb1ob2d(metaclass=_StrAsInstance):
         return SQL(f'GROUP BY {gb} ORDER BY {self.n + 1} DESC LIMIT {self.limit}')
 
 
+def _dtype2sql(dtype: pa.DataType | None) -> str:
+    """
+    Convert a pyarrow.DataType object to a SQL type string.
+    """
+    if dtype is None or pa.types.is_null(dtype):
+        # Default to STRING as the safest "untyped" type
+        # that can be cast from almost anything.
+        return "STRING"
+    if pa.types.is_string(dtype) or pa.types.is_large_string(dtype):
+        return "STRING"
+    if pa.types.is_binary(dtype) or pa.types.is_large_binary(dtype):
+        return "BYTES"
+    if pa.types.is_boolean(dtype):
+        return "BOOL"
+    if pa.types.is_integer(dtype):
+        return "INT64"
+    if pa.types.is_floating(dtype):
+        return "FLOAT64"
+    if pa.types.is_decimal128(dtype):
+        return "NUMERIC"
+    if pa.types.is_decimal256(dtype):
+        return "BIGNUMERIC"
+    if pa.types.is_date(dtype):
+        return "DATE"
+    if pa.types.is_time(dtype):
+        return "TIME"
+    if pa.types.is_timestamp(dtype):
+        return "TIMESTAMP" if cast(pa.TimestampType, dtype).tz else "DATETIME"
+    if pa.types.is_dictionary(dtype):
+        # A dictionary is an optimization.
+        # Its SQL type is just the type of its *values*.
+        return _dtype2sql(cast(pa.DictionaryType, dtype).value_type)
+    if (
+            pa.types.is_list(dtype) or
+            pa.types.is_large_list(dtype) or
+            pa.types.is_fixed_size_list(dtype) or
+            pa.types.is_list_view(dtype) or
+            pa.types.is_large_list_view(dtype)
+    ):
+        return f"ARRAY<{_dtype2sql(cast(pa.ListType, dtype).value_type)}>"
+    if pa.types.is_struct(dtype):
+        return f"STRUCT<{', '.join(f'`{x.name}` {_dtype2sql(x.type)}' for x in cast(pa.StructType, dtype))}>"
+    raise TypeError(f"Unsupported pyarrow type: {dtype}")
+
+
 @singledispatch
-def sql_repr(obj) -> SQL:
+def sql_repr(obj, dtype: pa.DataType | None = None) -> SQL:
     """
     Represent an object as an SQL expression.
     """
-    return SQL(str(obj) if pd.notna(obj) else "NULL")
+    if pd.notna(obj):
+        rep = str(obj)
+    elif dtype is None:
+        rep = "NULL"
+    else:
+        rep = f"CAST(NULL AS {_dtype2sql(dtype)})"
+    return SQL(rep)
 
 
-sql_repr.register(str, lambda s: SQL(repr(s)))
-sql_repr.register(bytes, lambda b: SQL(str(b)))
-sql_repr.register(bytearray, lambda ba: SQL(str(bytes(ba))))
-sql_repr.register(date, lambda d: SQL(f"DATE '{d}'"))
-sql_repr.register(datetime, lambda dt: SQL(f"{'DATETIME' if dt.tzinfo is None else 'TIMESTAMP'} '{dt}'"))
-sql_repr.register(Iterable, lambda it: SQL(f"[{', '.join(map(sql_repr, it))}]"))
-sql_repr.register(Mapping, lambda m: SQL(f"STRUCT({', '.join(f'{sql_repr(v)} AS {k}' for k, v in m.items())})"))
-sql_repr.register(type(pd.NaT), sql_repr.__wrapped__)  # pd.NaT is an instance of date and datetime, so override
+sql_repr.register(str, lambda obj, dtype=None: SQL(repr(obj)))
+sql_repr.register(bytes, lambda obj, dtype=None: SQL(str(obj)))
+sql_repr.register(bytearray, lambda obj, dtype=None: sql_repr(bytes(obj), dtype))
+
+
+@sql_repr.register(date)
+@sql_repr.register(datetime)
+@sql_repr.register(Decimal)
+def _sql_typed_scalar_repr(obj, dtype: pa.DataType | None = None) -> SQL:
+    if obj is pd.NaT:
+        return sql_repr(None, dtype=dtype or pa.timestamp('ns'))
+    return SQL(f"{_dtype2sql(dtype or pa.scalar(obj).type)} '{obj}'")
 
 
 @sql_repr.register
-def _(df: pd.DataFrame) -> SQL:
-    if df.empty:
-        raise ValueError("Cannot represent an empty DataFrame as a table")
-    # Note: The index is not kept
-    rows = iter(map(sql_repr, row) for row in df.to_numpy(dtype=object))
-    rows = chain(
-        [(f"{value} AS {name}" for name, value in zip(df.columns, next(rows)))],
-        rows,
-    )
-    return SQL(" UNION ALL ".join("SELECT " + ', '.join(row) for row in rows))
+def _sql_iterable_repr(obj: Iterable, dtype: pa.DataType | None = None) -> SQL:
+    items = list(obj)
+    sql_type = _dtype2sql(dtype)
+    is_array = sql_type.startswith("ARRAY")
+    if not items and is_array:
+        return SQL(f"{sql_type}[]")
+    val_type = cast(pa.ListType, dtype).value_type if is_array else pa.infer_type(items)
+    return SQL(f"[{', '.join(sql_repr(x, dtype=val_type) for x in items)}]")
+
+
+@sql_repr.register
+def _sql_mapping_repr(obj: Mapping, dtype: pa.DataType | None = None) -> SQL:
+    sql_type = _dtype2sql(dtype)
+    is_struct = sql_type.startswith("STRUCT")
+    if not obj and is_struct:
+        return SQL(f"CAST(NULL AS {sql_type})")
+    expressions = []
+    if is_struct:
+        for field in cast(pa.StructType, dtype):
+            value = obj.get(field.name, None)
+            expressions.append(f"{sql_repr(value, dtype=field.type)} AS `{field.name}`")
+    else:
+        for key, value in obj.items():
+            expressions.append(f"{sql_repr(value)} AS `{key}`")
+    return SQL(f"STRUCT({', '.join(expressions)})")
+
+
+@sql_repr.register
+def _sql_dataframe_repr(obj: pd.DataFrame, dtype: pa.DataType | None = None) -> SQL:
+    if obj.empty:
+        raise ValueError("Cannot represent an empty DataFrame as a SQL table expression")
+    try:
+        schema = pa.Table.from_pandas(obj, preserve_index=False).schema
+    except Exception as e:
+        raise TypeError(f"Pyarrow failed to infer DataFrame schema: {e}") from e
+    rows = []
+    for i, row in enumerate(obj.to_numpy(dtype=object)):
+        values = []
+        for name, value in zip(obj.columns, row):
+            sql_val = sql_repr(value, dtype=schema.field(name).type)
+            values.append(f"{sql_val} AS `{name}`" if i == 0 else sql_val)
+        rows.append(f"SELECT {', '.join(values)}")
+    return SQL("\nUNION ALL\n".join(rows))
 
 
 def sql_in(values, sort: bool = True) -> SQL:

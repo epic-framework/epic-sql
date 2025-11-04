@@ -1,6 +1,8 @@
 import pandas as pd
 import datetime as dt
 
+from decimal import Decimal
+
 from epic.sql.general import cnt, gb1ob2d, sql_repr, sql_in, sql_format, sql_if
 
 
@@ -16,7 +18,7 @@ def test_gb1ob2d():
 def test_repr():
     assert sql_repr(None) == "NULL"
     assert sql_repr(pd.NA) == "NULL"
-    assert sql_repr(pd.NaT) == "NULL"
+    assert sql_repr(pd.NaT) == "CAST(NULL AS DATETIME)"
     assert sql_repr(float('nan')) == "NULL"
     assert sql_repr(123) == str(123)
     assert sql_repr(123.4) == str(123.4)
@@ -27,10 +29,15 @@ def test_repr():
     assert sql_repr(d := dt.date.today()) == f"DATE '{d}'"
     assert sql_repr(t := dt.datetime.now()) == f"DATETIME '{t}'"
     assert sql_repr(t := pd.Timestamp.now('UTC')) == f"TIMESTAMP '{t}'"
+    assert sql_repr(Decimal("3.14")) == "NUMERIC '3.14'"
     assert sql_repr(range(3)) == "[0, 1, 2]"
-    assert sql_repr({'a': 1, 'b': 2}) == "STRUCT(1 AS a, 2 AS b)"
+    assert sql_repr({'a': 1, 'b': 2}) == "STRUCT(1 AS `a`, 2 AS `b`)"
+    assert sql_repr([[{'a': 1}, {'a': 2, 'b': 3}], []]) == (
+        '[[STRUCT(1 AS `a`, CAST(NULL AS INT64) AS `b`), STRUCT(2 AS `a`, 3 AS `b`)], '
+        'ARRAY<STRUCT<`a` INT64, `b` INT64>>[]]'
+    )
     assert sql_repr(pd.DataFrame([[1, 2], [10, 20]], columns=['A', 'B'])) == \
-           'SELECT 1 AS A, 2 AS B UNION ALL SELECT 10, 20'
+           'SELECT 1 AS `A`, 2 AS `B`\nUNION ALL\nSELECT 10, 20'
 
 
 def test_in():

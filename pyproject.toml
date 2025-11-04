@@ -16,6 +16,7 @@ tqdm = {version = "*", optional = true}
 google-api-core = {version = "*", optional = true}
 google-cloud-bigquery = {version = "*", optional = true}
 epic-jupyter = {version = "*", optional = true}
+pyarrow = "^22.0.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "*"
